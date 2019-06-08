@@ -18,3 +18,6 @@ El proyecto contiene los siguientes directorios:
 
 Licencia
 El contenido de este proyecto esta licencia bajo la Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International, y el código fuente usadoo para mostrar este contenido esta licenciado bajo la MIT license.
+
+## Nota:
+Debido a problemas de incompatibilidad  de caracteres al salvar los ficheros RMD en formato UTF-8, se ha decidido omitir tildes y otros caracteres especiales en los ficheros HTML y PDF de salida dado que hacían ilegible parte del contenido de la memoria
