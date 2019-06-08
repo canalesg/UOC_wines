@@ -1,5 +1,6 @@
 # wines
-Practica 2 -Tipología y ciclo de vida de los datos aula 1ç
+
+Practica 2 -Tipología y ciclo de vida de los datos aula 1
 Autor
 Aida Centelles Ahicart/Gonzalo Canales Nuñez
 
