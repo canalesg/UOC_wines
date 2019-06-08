@@ -1,0 +1,793 @@
+---
+title: "Practica 2 - Tipologia y ciclo de vida de los datos"
+author: "Aida Centelles Ahicart // Gonzalo Canales Nunez"
+date: "May 22, 2019"
+output:
+  html_document:
+    toc: TRUE
+    highlight: default
+    number_sections: true
+    toc_depth: 3
+    theme: cerulean
+---
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 8px;
+}
+h1.title {
+  font-size: 38px;
+  color: DarkRed;
+}
+h1 { /* Header 1 */
+  font-size: 24px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 18px;
+  color: DarkBlue;
+}
+h3 { /* Header 3 */
+  font-size: 12px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r, include=FALSE}
+options(tinytex.verbose = TRUE)
+```
+
+```{r load_libraries, include=FALSE }
+r = getOption("repos")
+r["CRAN"] = "http://cran.r-project.org"
+             
+options(repos = r)
+
+library(knitr)
+library(stringr)
+install.packages("psych")
+library(psych)
+install.packages("snakecase")
+library(snakecase)
+
+
+install.packages("moments")
+library(moments)
+
+install.packages("pvclust")
+library(pvclust)
+
+install.packages("randomForest")
+library(randomForest)
+
+install.packages("car")
+library(car)
+
+install.packages("grpss")
+library(grpss)
+
+
+install.packages("reshape2")
+library(reshape2)
+
+install.packages("arules")
+library(arules)
+
+install.packages("corrplot")
+library(corrplot)
+
+install.packages("ggplot2")
+library(ggplot2)
+
+install.packages('heatmaply')
+library('heatmaply')
+
+install.packages("C50")
+library("C50")
+
+```
+
+```{r, echo=TRUE}
+#Leemos el fichero de datos
+datos <-read.delim2("winequality-red.csv",header=TRUE,sep=",",dec=".")
+n_variables<- names(datos)
+```
+
+
+******
+# Descripcion del dataset: <br> ¿Por que es importante y que pregunta/problema pretende responder?
+******
+
+Incluye `r nrow(datos)` observaciones de `r ncol(datos)` caracteristicas. 11 de ellas son variables quimicas (variables independientes), y la otra  indica la calidad del vino (variable dependiente), una medida subjetiva que es la mediana de las opiniones de tres expertos en vinos. Especificamente, las caracteristicas son:
+
+1. **Acidez fija**: la mayoria de los acidos relacionados con el vino o fijos o no volatiles (no se evaporan facilmente)
+
+2. **Acidez volatil**: la cantidad de acido acetico en el vino, que a niveles demasiado altos puede provocar un sabor desagradable a vinagre
+
+3. **Acido citrico**: se encuentra en pequeÃƒÂ±as cantidades, el acido citrico puede agregar 'frescura' y sabor a los vinos
+
+4. **Azucar residual**: la cantidad de azucar que permanece en el vino despues de que se detenga la fermentacion, es infrecuente encontrar vinos con menos de 1 gramo/litro. Los vinos con mas de 45 gramos/litro se consideran dulces
+
+5. **Cloruros**: la cantidad de sal en el vino.
+
+6. **Dioxido de azufre libre**: la forma libre de SO2 existe en equilibrio entre el SO2 molecular (como un gas disuelto) y el ion bisulfito; Previene el crecimiento microbiano y la oxidacion del vino.
+
+7. **Dioxido de azufre total**: cantidad de formas libres y ligadas de SO2; en bajas concentraciones, el SO2 es mayormente indetectable en el vino, pero a concentraciones de SO2 libres superiores a 50 ppm, el SO2 se hace evidente en la nariz y el sabor del vino.
+
+8. **Densidad**: la densidad del agua  segÃƒÂºn el porcentaje de alcohol y contenido de azÃƒÂºcar
+
+9. **pH**: describe como  de acido o basico es un vino en una escala de 0 (muy acido) a 14 (muy basico); La mayoria de los vinos est?n entre 3-4 en la escala de pH.
+
+10. **Sulfatos**: un aditivo para el vino que puede contribuir a los niveles de gas de dioxido de azufre (S02), que actÃƒÂºa como un antimicrobiano y antioxidante.
+
+11. **Alcohol**: el porcentaje de alcohol del vino
+
+12. **Calidad**: Variable de salida (basada en datos sensoriales, con valores entre 0 y 10)
+
+En esta practica limpiaremos los datos y trateremos de estimar un modelo que a partir de los datos nos pueda predecir la calidad de un vino.
+
+******
+# Integracion y seleccion de los datos de interes a analizar
+******
+
+A priori, todas las variables van a ser usadas en el **analisis para predecir la calidad del vino**. En este caso, calidad (valor subjetivo aportado por los expertos) es la variable dependiente y el resto seran las idependientes. S
+
+```{r }
+pairs.panels(datos)
+```
+
+******
+# Limpieza de los datos
+******
+Como se ha dicho anteriormete, el fichero incluye 1599 observaciones de 12 caracteristicas. 11 de ellas son variables quimicas (variables independientes), y la otra  indica la calidad del vino (variable dependiente).
+
+
+******
+## ¿Los datos contienen ceros o elementos vacios? <br> ¿Como gestionarias cada uno de estos casos?
+******
+Comprobamos como se ha realizado la  asignacion a cada variable.
+```{r asignacion}
+
+res <- sapply(datos,class)
+kable(data.frame(variables=names(res),clase=as.vector(res)))
+sapply(datos, function(x) sum(is.na(x)))
+
+
+
+```
+ Vemos que todas las variables son numericas y que no hay valores nulos.
+ 
+ A continuacion, analizamos el bumero de ceros
+ 
+1. **Acidez fija**: Hay `r length(which(datos$fixed.acidity==0))` Vinos cuya acidez fija es 0.
+
+2. **Acidez volatil**: Hay `r length(which(datos$volatile.acidity==0))` Vinos cuya acidez volatil es 0.
+
+3. **Acido citrico**:  Hay `r length(which(datos$citric.acid==0))` Vinos cuyo nivel de acido citrico es 0.
+
+4. **Azucar residual**: Hay `r length(which(datos$residual.sugar==0))` Vinos cuyo nivel de azucar residual es 0.
+
+5. **Cloruros**:  Hay `r length(which(datos$chlorides==0))` Vinos cuyo nivel de cloruros  es 0.
+
+6. **Dioxido de azufre libre**: Hay `r length(which(datos$free.sulfur.dioxide==0))` Vinos cuyo nivel de di?xido de azufre libre es 0.
+
+7. **Dioxido de azufre total**: Hay `r length(which(datos$total.sulfur.dioxide==0))` Vinos cuyo nivel de di?xido de azufre total es 0.  
+
+8. **densidad**: Hay `r length(which(datos$density==0))` Vinos cuya densidad es 0.  
+
+9. **pH**: Hay `r length(which(datos$ph==0))` Vinos cuyo ph es 0. 
+
+10. **Sulfatos**: Hay `r length(which(datos$sulphates==0))` Vinos cuya nivel de sulfatos es 0.
+
+11. **alcohol**: Hay `r length(which(datos$alcohol==0))` Vinos cuya nivel de sulfatos es 0.
+
+12. **quality**: Hay `r length(which(datos$quality==0))` Vinos cuya nivel de sulfatos es 0.
+
+
+La unica variable que tiene valores cero es el nivel de acido citrico. Sin embargo, entra dentro de los parametros normales que un vino carezca de acido citrico, por tanto, se puede aceptar como un valor normal.
+
+******
+## Identificacion y tratamiento de valores extremos
+******
+Un **outlier** es una **observacion que parece inconsistente con el resto de los valores de la muestra**, siempre teniendo en cuenta el modelo probabilistico supuesto que debe seguir la muestra.  Para identificarlos, lo mas habitual es  representar graficamente cada una de las variables en forma de boxplots.
+
+```{r boxplot, eval=TRUE, echo=TRUE, message=FALSE, paged.print=FALSE}
+par(mfrow=c(2,2))
+for(i in 1:ncol(datos)) {
+  if (is.numeric(datos[,i])){
+    boxplot(datos[,i], main = colnames(datos)[i], width = 100)
+  }
+}
+par(mfrow=c(1,1))
+```
+
+Como se observa en los boxplots, existen outliers en todas las variables. Vemos que la variable que tiene valores mas desviados con respecto a la media estan en la variable Dioxido de azufre total (total.sulfur.dioxide). Para evitar errores en el analisis, procedemos a eliminarlos.
+
+```{r remove_outliers, echo=TRUE}
+
+filas_antes<-nrow(datos)
+
+outliers_total.sulfur.dioxide <- boxplot(datos$total.sulfur.dioxide, plot=FALSE)$out
+
+datos<- datos[-which( datos$total.sulfur.dioxide %in% outliers_total.sulfur.dioxide),]
+
+filas_despues<-nrow(datos)
+
+```
+Tras la eliminacion de outliers hemos pasado de `r filas_antes` filas a `r filas_despues` filas.
+A continuacion, volvemos a representar la variable en un boxplot
+
+```{r barplot_after_cleaning}
+
+par(mfrow=c(2,2))
+
+boxplot(datos[,7], main=names(datos)[7],col="gray")
+
+par(mfrow=c(1,1))
+
+```
+
+******
+# Analisis de los datos
+******
+
+En la etapa del analisis de datos, seleccionaremos primero los grupos de datos que queremos analizar, comprobaremos la **normalidad y homogeneidad de la varianza** y, finalmente, aplicaremos pruebas estadisticas para comparar los grupos de datos y realizar una prediccion o clasificacion. 
+
+******
+## Seleccion de los grupos de datos que se quieren analizar/comparar (planificacion de los analisis a aplicar) 
+******
+
+Antes de empezar a planificar el analisis de los datos, es de gran ayudar hacer un resumer de los datos, observando la **estructura y distribucion de los datos**, asi como **visualizar los datos**, mediante histogramas de los atributos y diagramas de dispersion, que permiten el estudio de las relaciones entre variables.
+
+**Estructura y distribucion de los datos:**
+Primero de todo, calculamos las estadisticas mas importantes (valor max, valor min, media, mediana, etc.) de cada atributo mediante la funcion "summary()":
+
+```{r summary}
+
+summary(datos)
+
+```
+
+La funcion summary nos ha proporcionado muchas informaciones sobre los datos de los que disponemos, como por ejemplo la mediana, los valores medios, max/min y los cuartiles.
+
+**Visualizacion de datos:**
+
+Empezaremos fijandonos en el atributo *quality*, que representa la calidad de los vinos del conjunto de datos. La calidad de la mayoria de vinos esta comprendida entre unos 5 (primer cuartil) y 6 (tercer cuartil), con una media de 5,6, sin embargo, observamos que hay vinos con una minima calidad de 3 y una maxima de 8.:
+
+
+```{r barplots}
+
+barplot(table(datos$quality))
+
+```
+
+**Seleccion de variables:**
+
+Dado el gran numero de variables, representaremos de forma grafica el indice de correlacion entre variables. Para ello, se usara la libreria el metodo corrplot.
+
+```{r echo=FALSE, Bivariate_Plots}
+M <- cor(datos)
+col4 <- colorRampPalette(c("#7F0000","red","#FF7F00","yellow","#7FFF7F", 
+            "cyan", "#007FFF", "blue","#00007F"))   
+corrplot(M,method="ellipse",col=col4(10),type="lower",order ="hclust")
+
+```
+
+El grafico de correlacion muestra ahora existe una fuertes correlaciones positivas entre: <br>
+- dioxido de azufre total y el dioxido de azufre libre <br>
+- el acido citrico y la acided fija <br>
+- la acidez fija y la densidad <br>
+- en menor medida, entre la calidad y el alcohol <br>
+
+Tambien existen  fuertes correlaciones negativas entre: <br>
+- el PH y la acidez fija <br>
+- en menor medida entre el alcohol y la densidad, la acidez volatil y el acido citrico, o el pH y el acido citrico <br>
+
+
+Observamos que las variables acido citrico y nivel de acidez (*citric.acid* y *fixed.acidity*), asi como los dioxidos de sulfuro (*total.sulfur.dioxide* y *free.sulfur.dioxide*) estan muy correlactionadas.
+
+Hemos decidido por ello desestimar las variables *citric.acid* y *free.sulfur.dioxide* del conjunto de datos, para reducir el volumen de datos y la complejidad de los modelos a usar. A partir de ahora trabajaremos entonces con el conjunto de datos sin estas dos variables:
+
+```{r, echo=TRUE}
+datos$citric.acid <- NULL
+datos$free.sulfur.dioxide <- NULL
+
+```
+
+
+**Analisis a realizar:**
+Los analisis que vamos a realizar en esta practica son los siguientes: <br>
+- **Analisis de correlaciones**: para observar las correlaciones entre variables <br>
+- **Contrastes de hipotesis:** comprobar la calidad del vino con respecto al porcentaje de alcohol <br>
+- **Analisis de regresion:** regresion de la calidad con diferentes variables, como alcohol, sulfatos y acidez <br>
+- **Modelo de prediccion:** creacion de un modelo de prediccion de calidad de vinos (en calidad baja, media o alta) en funcion a las variables existentes <br>
+
+******
+## Comprobacion de la normalidad y homogeneidad de la varianza. 
+******
+
+**Comprobacion de normalidad:**<br>
+El **test de Shapiro-Wilk** se considera uno de los metodos mas potentes para **contrastar la normalidad**. Asumiendo como hipotesis nula que la poblacion esta distribuida normalmente, si el p-valor es menor al nivel de significancia, generalmente = 0.05, entonces la hipotesis nula es rechazada  y se concluye que los datos no cuentan con una distribucion normal.
+ 
+Mediante el test de Shapiro investigamos si la distribucion de *quality* es normal:
+
+```{r }
+shapiro.test(datos$quality)
+
+```
+
+El valor W del test de Shapiro es W=0.969, muy cercano a 1, sin embargo p<0.05 lo que significa que debemos rechazar la hipotesis nula que indica que la distribucion es normal. Por lo tanto la distribucion de valores no sigue una distribucion normal.
+
+Creamos tambien un grafico con qqplot(), que nos muestra los valores por cuartiles. AÃƒÂ±adimos una linea de referencia azul para comprobar si la distribucion de valores se aproxima a ella, para poder asumir normalidad (o como en este caso, no):
+
+```{r }
+qqnorm(datos$quality, pch = 1, frame = FALSE)
+qqline(datos$quality, col = "steelblue", lwd = 2)
+
+```
+
+**Comprobacion de homogeneidad:**<br>
+Algunas pruebas estadisticas requieren la comprobacion previa de la homocedasticidad en los datos, es decir, de la igualdad de varianzas entre los grupos que se van a comparar. Entre las pruebas mas habituales se encuentran el **test de Levene**, que se aplica cuando los datos siguen una distribucion normal, asi como el test de **Fligner-Killeen**, que se trata de la alternativa no parametrica, utilizada cuando los datos no cumplen con la condicion de normalidad. En ambas pruebas, la hipotesis nula asume igualdad de varianzas en los diferentes grupos de datos, por lo que p-valores inferiores al nivel de significancia indicaran heterocedasticidad.
+
+En este caso nos interesa comprobar la homogeneidad de varianzas de las variables calidad y alcohol en dos subconjuntos de los datos.
+
+Discretizamos la variable calidad:
+```{r }
+
+table(discretize(datos$quality, "frequency", breaks=3))
+```
+
+Creamos la nueva variable quality-disc como la variable discretizada, incluyendo los tres grupos de vinos. Observamos que el primer intervalo (vinos malos) se extiende de 3 a 5 en nivel de calidad y el segundo de 5 a 6 (vinos normales):
+
+```{r }
+
+datos$qualitydisc <- ifelse(datos$quality <5, 'bad', ifelse(datos$quality >= 6,'good','normal'))
+datos$qualitydisc <- as.factor(datos$qualitydisc)
+```
+
+A continuacion iniciamos el test de Levene:
+
+```{r }
+
+leveneTest(alcohol ~ datos$qualitydisc, data = datos)
+```
+
+Tambien usamos el test de Fligner, que es mas indicado para distribuciones no normales:
+
+
+```{r }
+
+fligner.test(alcohol ~ datos$qualitydisc, data = datos)
+```
+
+Dado que ambas pruebas resultan en un p-valor inferior al nivel de significancia (<0.05), se rechaza la hipotesis nula de homocedasticidad y se concluye que la variable alcohol presenta varianzas estadisticamente diferentes para los diferentes grupos de calidad de vino.
+
+Nos deshacemos de la variable *qualitydisc* para continuar la practica:
+```{r, echo=TRUE}
+datos$qualitydisc <- NULL
+```
+
+
+******
+## Aplicacion de pruebas estadisticas para comparar los grupos de datos. En funcion de los datos y el objetivo del estudio, aplicar pruebas de contraste de hipotesis, correlaciones, regresiones, etc. Aplicar al menos tres metodos de analisis diferentes.
+******
+
+******
+### Correlaciones
+******
+Como hemos realizado en el apartado 4.1. representaremos de forma grafica el indice de correlacion entre variables. Para ello, se usara la libreria corrplot y su metodo corrplot.
+
+Las variables *citric.acid* y *free.sulfur.dioxide* han sido desestimadas del conjunto de datos en el apartado 4.1, por lo tanto ya no estan disponibles:
+
+```{r echo=FALSE, Bivariate_Plots_2}
+M <- cor(datos)
+col4 <- colorRampPalette(c("#7F0000","red","#FF7F00","yellow","#7FFF7F", 
+            "cyan", "#007FFF", "blue","#00007F"))   
+corrplot(M,method="ellipse",col=col4(10),type="lower",order ="hclust")
+
+```
+
+El grafico de correlacion muestra ahora existe una fuertes correlaciones positivas entre: <br>
+- la acidez fija y la densidad <br>
+- la calidad y el alcohol <br>
+
+Tambien existen  fuertes correlaciones negativas entre: <br>
+- el PH y la acidez fija <br>
+- en menor medida entre el alcohol y la densidad <br>
+
+Para confirmar los resultados obtenidos en el grafico anterior, se podria calcular el indice de correlacion utilizando metodos como **Pearson** si las variables se distribuyen de forman normal u otros tests como **Spearman**, en el caso de no seguir una distribucion normal. La normalidad de la distribucion de cada variable se puede estimar usando el test de Shapiro-Wilk para cada una de las variables.
+
+
+```{r ,eval=TRUE,echo=TRUE}
+shapiro.test(datos$volatile.acidity)
+```
+
+```{r ,eval=TRUE,echo=TRUE}
+shapiro.test(datos$fixed.acidity)
+```
+
+```{r ,eval=TRUE,echo=TRUE}
+shapiro.test(datos$residual.sugar)
+```
+
+```{r ,eval=TRUE,echo=TRUE}
+shapiro.test(datos$chlorides)
+```
+
+```{r ,eval=TRUE,echo=TRUE}
+shapiro.test(datos$total.sulfur.dioxide)
+```
+
+```{r ,eval=TRUE,echo=TRUE}
+shapiro.test(datos$density)
+```
+
+```{r ,eval=TRUE,echo=TRUE}
+shapiro.test(datos$pH)
+```
+
+```{r ,eval=TRUE,echo=TRUE}
+shapiro.test(datos$sulphates)
+```
+
+```{r ,eval=TRUE,echo=TRUE}
+shapiro.test(datos$alcohol)
+```
+
+```{r ,eval=TRUE,echo=TRUE}
+shapiro.test(datos$quality)
+```
+
+En este test, como ya se indico anteriormente, la hipotesis nula indica que la poblacion sigue una distribucion normal. En todos los casos anteriores,  las variables tienen un p-valor inferior al nivel de signficancia de 0.05, lo cual indica que se debe rechazar la hipotesis nula. En otras palabras, **ninguna de las variables siguen una distribucion normal**. 
+
+Por tanto, para medir el indice de correlacion entre variables, deberiamos rechazar Pearson y usar otros metodos de calculo de correlacion como el de rangos de Spearman. Para confirmar los resultados obtenidos en el grafico anterior, calcularemos el indice de correlacion para  para dos pares de variables con fuerte correlacion, y para dos pares de variables, con bajo indice de correlacion.
+
+```{r echo=FALSE}
+#Alta correlacion
+cor(datos$fixed.acidity, datos$density, method = "spearman")
+cor(datos$pH, datos$fixed.acidity, method = "spearman")
+
+#Baja correlacion
+cor(datos$pH, datos$alcohol, method = "spearman")
+cor(datos$alcohol, datos$total.sulfur.dioxide, method = "spearman")
+```
+
+******
+### Contraste de hipotesis
+******
+Una vez que hemos visto la correlacion entre variables, vamos a comprobar la *relacion entre calidad del vino con respecto al porcentaje de alcohol* mediatne un contraste de hipotesis.<br>
+
+En primer lugar vamos a clasificar la calidad de los vinos entre buenos (aquellos con una calificacion igual o superior a 6) y normales (aquellos con una calidad inferior a 6)
+
+```{r }
+
+normal <-c(datos$alcohol[datos$quality < 6])
+good<-c(datos$alcohol[datos$quality >= 6])
+
+```
+
+Asi pues vemos que hay un total de `r length(good)` vinos calificados como buenos y `r length(normal)` vinos normales.
+
+En el caso, definiremos como hipotesis nula que no varia cantidad de alcohol con respecto a la calidad del vino, y como hipotesis alternativa, que existan diferencias en la cantidad de alcohol con respecto a la calidad del vino: <br>
+
+- Hipotesis nula es H0:MeC=MeN<br>
+- Hipotesis alternativa es H1:MeC<>MeN<br>
+
+Tal y como hemos calculado anteriormente, ninguna de las variables sigue una distribucion normal. Usaremos por tanto un **test no parametrico como el  de U de Mann-Whitney**.
+
+```{r test U Mann-Withney}
+
+#Hacemos manualmente la suma de rangos
+muestraTotal <- c(good, normal)
+rangosMuestra <- rank( muestraTotal)
+
+
+sumaRangosGood<-sum(rangosMuestra[1:847])
+sumaRangosNormal<-sum(rangosMuestra[846:1544])
+n1<-length(good)
+n2<-length(normal)
+
+U1<- sumaRangosGood - n1 *(n1+1)/2
+U2<- sumaRangosNormal - n2*(n2+1)/2
+
+c(U1,U2)
+
+wilcox.test(good,normal,correct=FALSE)
+
+```
+
+Como se puede observar, el p-valor es muy inferior al nivel de significancia (0.05) por lo tanto rechazamos la hipotesis nula. En conclusion, hay diferencias significativas en el cantidad de alcohol entre vinos buenos y vinos normales.  Siendo mayor la cantidad de alcohol en los vinos buenos que en los normales (suma de rangos de los vinos buenos es mayor que la de los vinos normales).
+
+******
+### Regresiones: 
+******
+La **regresion lineal** es un modelo matematico que tiene como objetivo **aproximar la relacion de dependencia lineal entre una variable dependiente y una o una serie de variables independientes**. 
+ 
+En R, la regresion lineal se aplica mediante la funcion lm(). Esta puede ser simple o multiple en funcion de las variables independientes que se incluyan en la formula que se introduce como argumento. 
+
+
+```{r }
+
+plot(datos)
+```
+
+En el apartado "4.3.1." hemos visto que la calidad esta relacionada con el nivel de alcohol (alto nivel de correlacion), asi como medianamente con el nivel de sulfatos y acido citrico.
+
+Realizaremos por lo tanto una regresion de la calidad con la variable alcohol:
+
+```{r }
+
+m1 = lm(quality~alcohol,data=datos) 
+summary(m1)
+```
+
+Siendo el coeficiente de determinacion (R-squared) una medida de calidad del modelo que toma valores entre -1 y 1, se comprueba como la calidad y el alcohol se correlacionan en parte, dando lugar a un R-squared de 0.2177. 
+
+Podemos tambien representar graficamente esta regresion: observamos que tiene una slope ligeramente positiva, lo que confirma la correlacion positiva de las dos variables:
+
+```{r }
+reg<-lm(datos$quality~datos$alcohol , data = datos)
+coeff=coefficients(reg)
+```
+
+```{r }
+plot(datos$quality, datos$alcohol)
+abline(reg, col="blue")
+```
+
+Al introducir los sulfatos, este R-squared mejora hasta 0.2968 ya que tambien se correlaciona con el volumen de forma significativa, aunque en menor medida. 
+
+```{r }
+
+m2 = lm(quality~alcohol+sulphates,data=datos) 
+summary(m2)
+```
+
+Al introducir el nivel de acidez, baja ligeramente.
+```{r }
+
+m3 = lm(quality~alcohol+sulphates+fixed.acidity,data=datos) 
+summary(m3)
+```
+
+Si introducimos el nivel de azÃƒÂºcar residual, vemos que el R-squared mejora algo de nuevo:
+
+```{r }
+
+m4 = lm(quality~alcohol+sulphates+residual.sugar, data=datos) 
+summary(m4)
+```
+
+
+La funcion lm() de Rtambien permite implementar modelos polinomicos mas complejos, como en el siguiente ejemplo: 
+
+```{r }
+
+m5 = lm(quality~alcohol+I(alcohol^2)+sulphates+residual.sugar, data=datos) 
+summary(m5)
+```
+
+Se puede observar como el termino que relaciona el volumen con el alcohol de forma cuadratica resulta algo mas significativo, mejorando el R-squared. En ningun caso  hemos obtenido sin embargo un R-squared muy elevado, aÃƒÂºn tomando las variables mas correlacionadas.
+ 
+******
+### Modelo de prediccion:
+******
+Existen muchos vinos con una calidad con valor de 4.5-6, muy por encima de otros niveles. Asi que en el conjunto de datos se encuentran muchos mas vinos "normales" que excelentes o muy malos. 
+
+```{r }
+barplot(table(cut(datos$quality, breaks = seq(0, 8, by = 0.5), 
+      labels =paste(seq(0, 7.5, by =0.5), seq(0.5, 8, by = 0.5), sep="-"))))
+```
+
+Para facilitar un poco el modelo de prediccion, clasificaremos los niveles de vino en *malo*, *normal* y *bueno*.
+
+Para saber que intervalos tomar para cada categoria utilizaremos. Para ello, utlizamos el paquete *arules* de R, que permite discretizar datos mediante la funcion discretize(). Utilizamos el modo **clusterig*, que nos devuelve tres clusters con un nÃƒÂºmero de muestras igual en cada uno, automaticamente idenificando los puntos de corte para la variable calidad:
+
+```{r }
+#equal frequency 
+x <- datos$quality
+hist(x, breaks = 32, main = "Equal Frequency") 
+abline(v = discretize(x, breaks = 3, onlycuts = TRUE), col = "red")
+
+```
+
+Observamos que el primer intervalo (vinos malos) se extiende de 3 a 5 en nivel de calidad y el segundo de 5 a 6 (vinos normales). Como en el ejercicio 4.3.2. de contraste de hipotesis, consideramos buenos todos los vinos con un valor de 6 o mas:
+
+```{r }
+datos$quality <- ifelse(datos$quality <5, 'bad', ifelse(datos$quality >= 6,'good','normal'))
+datos$quality <- as.factor(datos$quality)
+
+```
+
+Esto nos **clasifica los vinos en malo, normal o bueno** dependiendo de su nivel de calidad.
+
+Observamos la distribucion de valores por categoria, que contiene gracias a nuestra clasificacion por valores un numero mas o menos equilibrado de datos por categoria:
+
+```{r }
+
+table(datos$quality)
+
+```
+
+Antes de crear nuestro modelo, separaremos nuestro conjunto de datos en datos de test (20%) y de entrenamiento (80%), tomando la regla 80-20 para separar un conjunto de datos para test y entrenamiento:
+
+```{r }
+
+set.seed(123)
+samp <- sample(nrow(datos), 0.8 * nrow(datos))
+train <- datos[samp, ]
+test <- datos[-samp, ]
+```
+
+
+Creamos el modelo:
+Utilizaremos el modelo de mineria de datos Random Forest, y para ello necesitaremos la libreria **randomForest**:
+
+```{r }
+library(randomForest)
+```
+
+```{r }
+
+model <- randomForest(quality ~ fixed.acidity + volatile.acidity + residual.sugar+chlorides+total.sulfur.dioxide+density+pH+sulphates+alcohol, data = train)
+```
+
+En el modelo, podemos decidir cuantos arboles (trees) queremos (por default = 500), y el nÃƒÂºmero de predictores que aleatoriamente se usan en cada split to randomly sample at each 
+
+Vemos a continuacion la matriz de confusion:
+
+```{r }
+
+model
+```
+        
+Vemos que se han construido 500 arboles, y que el modelo aleatoriamente utiliza 3 predictores en cada split. Tambien podemos ver la matriz de confusion comparada con los datos reales, asi como el error de clasificacion de cada clase. A continucion haremos un test con los datos de test:
+
+```{r }
+
+pred <- predict(model, newdata = test)
+table(pred, test$quality)
+```
+
+
+Podemos calcular la precision del modelo asi:
+
+```{r }
+
+((1+146+89)/(1+3+146+27+9+34+89))
+
+```
+
+La precision con este modelo es bastante alta, de mas de un 70%. Podriamos mejorarla con una seleccion mas exhaustiva de features o atributos (este paso se llama *feature selection* en ingles) o usando diferente nÃƒÂºmero de atributos a usar. 
+
+
+******
+# Representacion de los resultados a partir de tablas y graficas. 
+******
+A continuacion se presentan una serie de graficos que representan graficamente las conclusiones extraidas durante la ejecucion del analisis.
+<br>
+<br>
+**GRAFICO I **
+
+```{r echo=FALSE, grafico_I}
+ggplot(datos, aes(factor(quality), alcohol)) +
+geom_violin() +
+  geom_boxplot(width=.1) +
+labs(title="Alcohol vs Quality")+
+xlab("Quality")+ ylab("Alcohol (% by Volume)")
+```
+
+**Interpretacion:** El grafico de violin muestra la relacion  que existe en el modelo entre la calidad y una de las variables independeinte que mas fuertemente determinan la calidad del vino, como hemos visto durante toda la practica: el alcohol. Como se aprecia, los vinos que hemos clasificado como buenos (quality> 6), tienen un mayor porcentaje de alcohol.
+<br>
+<br>
+**GRAFICO II **
+
+```{r }
+ggplot(datos, aes(x = alcohol, y = density)) +
+geom_point(aes(color = quality)) +
+labs(title="Density vs Alcohol") +
+xlab("Alcohol (g/dm^3)") + 
+ylab("Density (g/dm^3)")
+
+```
+
+```{r }
+datos$pred.qual <- predict(lm(density ~ alcohol, data = datos))
+
+p1 <- ggplot(datos, aes(x = alcohol, y = density))
+
+p1 + geom_point(aes(color = quality)) +
+  geom_line(aes(y = pred.qual))
+```
+
+**Interpretacion:** Este diagrama de dispersion muestra que la densidad y el volumen de alcohol estan correlacionadas negativamente (comprobado con un modelo de regresiÃ³n). Esto indica que cuanto mayor es el porcentaje de alcohol, menor es la densidad (menor cantidad de azucares). El grafico muestra, como los vinos de mejor calidad se situan en la parte inferior derecha del grafico. En esta region se situan los vinos con mayor volumen de alchohol y menor densidad. 
+<br>
+<br>
+
+**GRAFICO III **
+
+```{r echo=TRUE, grafico_IV}
+ggplot(aes(x = as.factor(quality)), data = datos)+
+       geom_bar()+
+       xlab("Wine Quality") + ylab("Count") +
+       ggtitle("Bar Plot of Wine Quality") 
+```
+
+**Interpretacion:** Como se explico anteriormente, existe cierta asimetria en la distribucion de la calidad. El numero de vinos calificados como malos, es bastante reducido, en relacion a los vinos calificados como normales o buenos.
+
+
+******
+# Resolucion del problema. A partir de los resultados obtenidos, ¿cuales son las conclusiones? ¿los resultados permiten responder al problema? 
+******
+El problema que se planteaba al iniciar la practica es que **partiamos de un dataset de vinos del que no teniamos ningun conocimiento** (correlaciones entre variables, interdependencias, etc).
+<br>
+Lo primero que hemos hecho es un **analisis del conjunto de datos** (volumen de datos, q, variables, tipo de variables, etc), para posterioremente **investigar si hay relaciones entre ellos**, **contrastar hipotesis**, para poder, como personas sin conocimientos especificos de enologia, **clasificar los vinos en categorias** y crear un **modelo que nos clasifique nuevos vinos** que nos encontremos en funcion a su calidad.
+<br><br>
+Para llegar a estas conclusiones, hemos procedido de la siguiente forma: <br>
+- hemos hecho un analisis de la estrucutra de los datos <br>
+- hemos hecho un analisis visual, mediante la representacion grafica <br>
+- hemos investigado las correlaciones entre los datos <br>
+- hemos desechado variables fuertemente correlacionados para evitar problemas de colinealidad <br>
+- hemos comprobado la veracidad de nuestras primeras intuiciones (alcohol y calidad van del a mano). <br>
+- Para ello hemos usado: contraste de hipotesis y tests de comprobacon de varianzas, asi como crear un modelo de regresio capaz de clasificar vinos del conjunto de test por niveles de calidad. Los resultados nos han proporcionado mas informacion sobre el dataset y nos ha permitido rechazar o confirmar hipotesis.
+<br>
+
+```{r archivo_corregido}
+write.csv2(datos, "winequality-red_out.csv", row.names = FALSE)
+```
+
+******
+
+<table  border=1 cellspacing=0 cellpadding=0
+ style='border-collapse:collapse;border:none'>
+ <tr>
+  <td>
+  <p>**Contribuciones**</p>
+  </td>
+  <td>
+  <p >**Firma**</p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p >**Investigación previa**</p>
+  </td>
+  <td>
+  <p >Aïda Centelles/Gonzalo Canales</p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p >**Redacción de las respuestas**</p>
+  </td>
+  <td>
+  <p >Aïda Centelles/Gonzalo Canales</p>
+  </td>
+ </tr>
+ <tr>
+  <td>
+  <p >**Desarrollo código**</p>
+  </td>
+  <td>
+  <p >Aïda Centelles/Gonzalo Canales</p>
+  </td>
+ </tr>
+</table>
